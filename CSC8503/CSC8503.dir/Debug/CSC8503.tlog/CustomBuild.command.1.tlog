@@ -1,0 +1,10 @@
+^H:\DESKTOP\NEW FOLDER\CSC8503\CMAKELISTS.TXT
+setlocal
+C:\CMake\bin\cmake.exe "-SH:/Desktop/New folder" "-BH:/Desktop/New folder" --check-stamp-file "H:/Desktop/New folder/CSC8503/CMakeFiles/generate.stamp"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
