@@ -54,6 +54,9 @@ namespace NCL {
 			GameObject* AddEnemyToWorld(const Vector3& position);
 			GameObject* AddBonusToWorld(const Vector3& position);
 
+			StateGameObject* AddStateObjectToWorld(const Vector3& position);
+			StateGameObject* testStateObject = nullptr;
+
 #ifdef USEVULKAN
 			GameTechVulkanRenderer*	renderer;
 #else
