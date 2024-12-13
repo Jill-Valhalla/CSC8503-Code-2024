@@ -26,13 +26,13 @@ StateGameObject::StateGameObject() {
 
     stateMachine->AddTransition(new StateTransition(stateA, stateB,
         [&]() -> bool {
-            return this->counter > 1.0f;
+            return this->counter > 0.8f;
         }
     ));
 
     stateMachine->AddTransition(new StateTransition(stateB, stateA,
         [&]() -> bool {
-            return this->counter < -1.0f;
+            return this->counter < -0.5f;
         }
     ));
 
