@@ -28,6 +28,8 @@ namespace NCL {
 
 			void BridgeConstraintTest();
 
+			//void InitMazeWorld();
+
 			/*
 			These are some of the world/object creation functions I created when testing the functionality
 			in the module. Feel free to mess around with them to see different objects being created in different
@@ -46,7 +48,11 @@ namespace NCL {
 			void DebugObjectMovement();
 			void LockedObjectMovement();
 
+			void InitGameToolsObject();
+
 			GameObject* AddFloorToWorld(const Vector3& position);
+			GameObject* AddCoinToWorldWithColor(const Vector3& position, float radius, float inverseMass = 10.0f,
+				std::string name = "uname", Vector4 color = Vector4(1, 1, 1, 1));
 			GameObject* AddSphereToWorld(const Vector3& position, float radius, float inverseMass = 10.0f);
 			GameObject* AddCubeToWorld(const Vector3& position, Vector3 dimensions, float inverseMass = 10.0f);
 
@@ -56,6 +62,9 @@ namespace NCL {
 
 			StateGameObject* AddStateObjectToWorld(const Vector3& position);
 			StateGameObject* testStateObject = nullptr;
+
+			StateGameObject* AddStateObjectCubeToWorld(const Vector3& position);
+			StateGameObject* testStateCubeObject = nullptr;
 
 #ifdef USEVULKAN
 			GameTechVulkanRenderer*	renderer;
@@ -77,8 +86,10 @@ namespace NCL {
 			Mesh*	capsuleMesh = nullptr;
 			Mesh*	cubeMesh	= nullptr;
 			Mesh*	sphereMesh	= nullptr;
+			Mesh*   coinMesh    = nullptr;
 
 			Texture*	basicTex	= nullptr;
+			Texture*    MadokaTex   = nullptr;
 			Shader*		basicShader = nullptr;
 
 			//Coursework Meshes
@@ -86,6 +97,9 @@ namespace NCL {
 			Mesh*	kittenMesh	= nullptr;
 			Mesh*	enemyMesh	= nullptr;
 			Mesh*	bonusMesh	= nullptr;
+			Mesh*   charMesh    = nullptr;
+			Mesh*   cylinderMesh= nullptr;
+			Mesh*   gooseMesh   = nullptr;
 
 			//Coursework Additional functionality	
 			GameObject* lockedObject	= nullptr;
@@ -95,6 +109,12 @@ namespace NCL {
 			}
 
 			GameObject* objClosest = nullptr;
+
+			//NavigationGrid *grid = nullptr;
+
+			Camera* cameraMain;
+			//GamePlayerFollowCamera* cameraFollow;
+			Vector3 startCameraPos = Vector3(512.0f, 40.0f, 512.0f);
 		};
 	}
 }

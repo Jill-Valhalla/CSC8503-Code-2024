@@ -32,6 +32,8 @@ namespace NCL {
 				return mainCamera;
 			}
 
+
+
 			void ShuffleConstraints(bool state) {
 				shuffleConstraints = state;
 			}
@@ -63,6 +65,8 @@ namespace NCL {
 			std::vector<Constraint*> constraints;
 
 			PerspectiveCamera mainCamera;
+
+		
 
 			bool shuffleConstraints;
 			bool shuffleObjects;

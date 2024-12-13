@@ -3,7 +3,34 @@
 #include "PhysicsObject.h"
 #include "RenderObject.h"
 #include "TextureLoader.h"
+#include "Window.h"
 
+
+#include "PositionConstraint.h"
+#include "OrientationConstraint.h"
+#include "StateGameObject.h"
+
+#include "StateMachine.h"
+#include "StateTransition.h"
+#include "State.h"
+
+#include "GameServer.h"
+#include "GameClient.h"
+
+#include "NavigationGrid.h"
+#include "NavigationMesh.h"
+
+#include "TutorialGame.h"
+#include "NetworkedGame.h"
+
+#include "PushdownMachine.h"
+
+#include "PushdownState.h"
+
+#include "BehaviourNode.h"
+#include "BehaviourSelector.h"
+#include "BehaviourSequence.h"
+#include "BehaviourAction.h"
 #include "PositionConstraint.h"
 #include "OrientationConstraint.h"
 #include "StateGameObject.h"
@@ -15,6 +42,7 @@ using namespace CSC8503;
 
 TutorialGame::TutorialGame() : controller(*Window::GetWindow()->GetKeyboard(), *Window::GetWindow()->GetMouse()) {
 	world		= new GameWorld();
+
 #ifdef USEVULKAN
 	renderer	= new GameTechVulkanRenderer(*world);
 	renderer->Init();
@@ -53,12 +81,17 @@ void TutorialGame::InitialiseAssets() {
 	sphereMesh	= renderer->LoadMesh("sphere.msh");
 	catMesh		= renderer->LoadMesh("ORIGAMI_Chat.msh");
 	kittenMesh	= renderer->LoadMesh("Kitten.msh");
+	coinMesh    = renderer->LoadMesh("coin.msh");
+	charMesh    = renderer->LoadMesh("goat.msh");
+	gooseMesh   = renderer->LoadMesh("goose.msh");
+	cylinderMesh = renderer->LoadMesh("Cylinder.msh");
 
 	enemyMesh	= renderer->LoadMesh("Keeper.msh");
 	bonusMesh	= renderer->LoadMesh("19463_Kitten_Head_v1.msh");
 	capsuleMesh = renderer->LoadMesh("capsule.msh");
 
 	basicTex	= renderer->LoadTexture("checkerboard.png");
+	MadokaTex   = renderer->LoadTexture("Madoka.png");
 	basicShader = renderer->LoadShader("scene.vert", "scene.frag");
 
 	InitCamera();
@@ -72,6 +105,8 @@ TutorialGame::~TutorialGame()	{
 	delete kittenMesh;
 	delete enemyMesh;
 	delete bonusMesh;
+	delete charMesh;
+
 
 	delete basicTex;
 	delete basicShader;
@@ -82,6 +117,7 @@ TutorialGame::~TutorialGame()	{
 }
 
 void TutorialGame::UpdateGame(float dt) {
+
 	if (!inSelectionMode) {
 		world->GetMainCamera().UpdateCamera(dt);
 	}
@@ -133,11 +169,17 @@ void TutorialGame::UpdateGame(float dt) {
 		}
 	}
 
+	Debug::DrawLine(Vector3(), Vector3(0, 100, 0), Vector4(1, 0, 0, 1));
+	Debug::DrawLine(Vector3(), Vector3(100, 0, 0), Vector4(0, 1, 0, 1));
+	Debug::DrawLine(Vector3(), Vector3(0, 0, 100), Vector4(0, 0, 1, 1));
+
 	if (testStateObject) {
 		testStateObject->Update(dt);
 	}
+	if (testStateCubeObject) {
+		testStateCubeObject->Update(dt);
+	}
 
-	Debug::DrawLine(Vector3(), Vector3(0, 100, 0), Vector4(1, 0, 0, 1));
 
 	SelectObject();
 	MoveSelectedObject();
@@ -268,12 +310,17 @@ void TutorialGame::InitWorld() {
 	world->ClearAndErase();
 	physics->Clear();
 
-	InitMixedGridWorld(15, 15, 3.5f, 3.5f);
+	//InitMixedGridWorld(15, 15, 3.5f, 3.5f);
 
 	InitGameExamples();
 	InitDefaultFloor();
+	BridgeConstraintTest();
+	InitGameToolsObject();
+	
 
-	testStateObject = AddStateObjectToWorld(Vector3(0, 10, 0));
+	testStateObject = AddStateObjectToWorld(Vector3(100, -7, -100));
+	testStateCubeObject = AddStateObjectCubeToWorld(Vector3(100, -10, 100));
+
 }
 
 /*
@@ -331,6 +378,32 @@ GameObject* TutorialGame::AddSphereToWorld(const Vector3& position, float radius
 	return sphere;
 }
 
+
+GameObject*TutorialGame::AddCoinToWorldWithColor(const Vector3& position, float radius, float inverseMass, std::string name,
+	Vector4 color) {
+	GameObject* sphere = new GameObject(name);
+
+	Vector3 sphereSize = Vector3(radius, radius, radius);
+	SphereVolume* volume = new SphereVolume(radius);
+	sphere->SetBoundingVolume((CollisionVolume*)volume);
+
+	sphere->GetTransform()
+		.SetScale(sphereSize)
+		.SetPosition(position);
+
+	sphere->SetRenderObject(new RenderObject(&sphere->GetTransform(), coinMesh, basicTex, basicShader));
+	sphere->SetPhysicsObject(new PhysicsObject(&sphere->GetTransform(), sphere->GetBoundingVolume()));
+
+	sphere->GetPhysicsObject()->SetInverseMass(inverseMass);
+	sphere->GetPhysicsObject()->InitSphereInertia();
+
+	sphere->GetRenderObject()->SetColour(color);
+	world->AddGameObject(sphere);
+
+	return sphere;
+}
+
+
 GameObject* TutorialGame::AddCubeToWorld(const Vector3& position, Vector3 dimensions, float inverseMass) {
 	GameObject* cube = new GameObject();
 
@@ -353,11 +426,11 @@ GameObject* TutorialGame::AddCubeToWorld(const Vector3& position, Vector3 dimens
 }
 
 GameObject* TutorialGame::AddPlayerToWorld(const Vector3& position) {
-	float meshSize		= 1.0f;
-	float inverseMass	= 0.5f;
+	float meshSize		= 10.0f;
+	float inverseMass	= 50.0f;
 
 	GameObject* character = new GameObject();
-	SphereVolume* volume  = new SphereVolume(1.0f);
+	SphereVolume* volume  = new SphereVolume(10.0f);
 
 	character->SetBoundingVolume((CollisionVolume*)volume);
 
@@ -377,7 +450,7 @@ GameObject* TutorialGame::AddPlayerToWorld(const Vector3& position) {
 }
 
 GameObject* TutorialGame::AddEnemyToWorld(const Vector3& position) {
-	float meshSize		= 3.0f;
+	float meshSize		= 10.0f;
 	float inverseMass	= 0.5f;
 
 	GameObject* character = new GameObject();
@@ -425,10 +498,15 @@ void TutorialGame::InitDefaultFloor() {
 }
 
 void TutorialGame::InitGameExamples() {
-	AddPlayerToWorld(Vector3(0, 5, 0));
-	AddEnemyToWorld(Vector3(5, 5, 0));
-	AddBonusToWorld(Vector3(10, 5, 0));
+	AddPlayerToWorld(Vector3(-180, -15, -180));
+	AddEnemyToWorld(Vector3(50, -18, 50));
+	AddEnemyToWorld(Vector3(150, -18, 50));
+	AddEnemyToWorld(Vector3(0, -18, 50));
+	AddEnemyToWorld(Vector3(100, -18, 50));
+	AddBonusToWorld(Vector3(100, -18, 180));
+	//AddCoinToWorldWithColor(Vector3(-20, 0, 0), 0.5f);
 }
+
 
 void TutorialGame::InitSphereGridWorld(int numRows, int numCols, float rowSpacing, float colSpacing, float radius) {
 	for (int x = 0; x < numCols; ++x) {
@@ -439,6 +517,7 @@ void TutorialGame::InitSphereGridWorld(int numRows, int numCols, float rowSpacin
 	}
 	AddFloorToWorld(Vector3(0, -2, 0));
 }
+
 
 void TutorialGame::InitMixedGridWorld(int numRows, int numCols, float rowSpacing, float colSpacing) {
 	float sphereRadius = 1.0f;
@@ -466,6 +545,29 @@ void TutorialGame::InitCubeGridWorld(int numRows, int numCols, float rowSpacing,
 		}
 	}
 }
+
+
+
+/*
+void TutorialGame::InitMazeWorld() {
+
+	if (grid == nullptr) {
+		grid = new NavigationGrid("TestGrid3.txt");
+	}
+
+	int** gridSquare = grid->GetGrid();
+	int size = grid->GetSize();
+
+	for (int y = 0; y < grid->GetHeight(); y++) {
+		for (int x = 0; x < grid->GetWidth(); x++) {
+			if (gridSquare[y][x] == 120) {
+				AddCubeToWorld(Vector3(x * size, -14, y * size), Vector3(size / 2, size / 2, size / 2), 0.0f);
+			}
+		}
+	}
+
+}
+*/
 
 /*
 Every frame, this code will let you perform a raycast, to see if there's an object
@@ -560,7 +662,7 @@ void TutorialGame::BridgeConstraintTest() {
 	float maxDistance = 30; // constraint distance
 	float cubeDistance = 20; // distance between links
 
-	Vector3 startPos = Vector3(0, 100, 0);
+	Vector3 startPos = Vector3(100, 100, 100);
 
 	GameObject* start = AddCubeToWorld(startPos + Vector3(0, 0, 0), cubeSize, 0);
 	GameObject* end = AddCubeToWorld(startPos + Vector3((numLinks + 2) * cubeDistance, 0, 0), cubeSize, 0);
@@ -580,21 +682,81 @@ void TutorialGame::BridgeConstraintTest() {
 StateGameObject* TutorialGame::AddStateObjectToWorld(const Vector3& position) {
 	StateGameObject* apple = new StateGameObject();
 
-	SphereVolume* volume = new SphereVolume(0.5f);
+	SphereVolume* volume = new SphereVolume(5.0f);
 	apple->SetBoundingVolume((CollisionVolume*)volume);
 	apple->GetTransform()
-		.SetScale(Vector3(2, 2, 2))
+		.SetScale(Vector3(10, 10, 10))
 		.SetPosition(position);
 
-	apple->SetRenderObject(new RenderObject(&apple->GetTransform(), bonusMesh, nullptr, basicShader));
+	apple->SetRenderObject(new RenderObject(&apple->GetTransform(), sphereMesh, nullptr, basicShader));
 	apple->SetPhysicsObject(new PhysicsObject(&apple->GetTransform(), apple->GetBoundingVolume()));
 
-	apple->GetPhysicsObject()->SetInverseMass(1.0f);
+	apple->GetPhysicsObject()->SetInverseMass(5.0f);
 	apple->GetPhysicsObject()->InitSphereInertia();
 
 	world->AddGameObject(apple);
 
 	return apple;
 }
+
+StateGameObject* TutorialGame::AddStateObjectCubeToWorld(const Vector3& position) {
+	StateGameObject* apple = new StateGameObject();
+
+	SphereVolume* volume = new SphereVolume(5.0f);
+	apple->SetBoundingVolume((CollisionVolume*)volume);
+	apple->GetTransform()
+		.SetScale(Vector3(10, 10, 10))
+		.SetPosition(position);
+
+	apple->SetRenderObject(new RenderObject(&apple->GetTransform(), cubeMesh, nullptr, basicShader));
+	apple->SetPhysicsObject(new PhysicsObject(&apple->GetTransform(), apple->GetBoundingVolume()));
+
+	apple->GetPhysicsObject()->SetInverseMass(5.0f);
+	apple->GetPhysicsObject()->InitSphereInertia();
+
+	world->AddGameObject(apple);
+
+	return apple;
+}
+
+
+
+
+
+void TutorialGame::InitGameToolsObject() {
+	//  AddCoinToWorldWithColor(Vector3(40, -15, 30), 0.5f, 0, "coinTools", Vector4(1, 1, 0, 1));
+	//  AddCoinToWorldWithColor(Vector3(40, -15, 30), 0.5f, 0, "coinTools", Vector4(1, 1, 0, 1));
+
+	for (int i = 350; i <= 380; i += 10)
+		for (int j = 70; j <= 100; j += 10)
+			AddCoinToWorldWithColor(Vector3(i, -15, j), 0.5f, 0, "coinTools", Vector4(1, 1, 0, 1));
+
+	for (int i = 130; i <= 180; i += 10)
+		for (int j = 10; j <= 30; j += 10)
+			AddCoinToWorldWithColor(Vector3(i, -15, j), 0.5f, 0, "coinTools", Vector4(1, 1, 0, 1));
+
+	for (int i = 30; i <= 70; i += 10)
+		for (int j = 110; j <= 110; j += 10)
+			AddCoinToWorldWithColor(Vector3(i, -15, j), 0.5f, 0, "coinTools", Vector4(1, 1, 0, 1));
+
+	for (int i = 350; i <= 360; i += 10)
+		for (int j = 260; j <= 280; j += 10)
+			AddCoinToWorldWithColor(Vector3(i, -15, j), 0.5f, 0, "coinTools", Vector4(1, 1, 0, 1));
+
+	for (int i = 10; i <= 20; i += 10)
+		for (int j = 270; j <= 290; j += 10)
+			AddCoinToWorldWithColor(Vector3(i, -15, j), 0.5f, 0, "coinTools", Vector4(1, 1, 0, 1));
+
+	for (int i = 50; i <= 60; i += 10)
+		for (int j = 140; j <= 140; j += 10)
+			AddCoinToWorldWithColor(Vector3(i, -15, j), 0.5f, 0, "coinTools", Vector4(1, 1, 0, 1));
+
+
+	//KeyObject = AddSphereToWorld(Vector3(170, -15, 180), 2.0f, 200.0);
+
+	//GameObject* doorObject = AddGameDoorObject(Vector3(180, -15, 348), Vector3(30, 10 / 2, 1.0f), 0.0f, "Door");
+
+}
+
 
 
